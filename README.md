@@ -25,6 +25,7 @@ use `⋯ › Set as default viewer…` and confirm the choice in Settings.
 
 - Images: PNG, JPEG, JFIF, GIF, WebP, BMP, ICO, SVG, AVIF
 - PDFs rendered with pdf.js, with a thumbnail sidebar
+- Selectable text in PDFs, and find (`Ctrl`+`F`) across the document
 - Zoom, pan, fit width, fit page, actual size
 - The rest of the folder in a Files tab, with a name filter and sorting
 - Rotation and flips for images, saved as a copy — the original is never touched
@@ -36,6 +37,7 @@ use `⋯ › Set as default viewer…` and confirm the choice in Settings.
 | | |
 |---|---|
 | `Ctrl`+`O` | Open a file |
+| `Ctrl`+`F` | Find in the PDF; `Enter` / `Shift`+`Enter` step through matches |
 | `←` / `→` | Page in a PDF, otherwise previous / next file |
 | `Ctrl`+`←` / `Ctrl`+`→` | Previous / next file |
 | `Home` / `End` | First / last page or file |
@@ -80,7 +82,7 @@ named by both links through `src-tauri/nsis-hooks.nsh`. Regenerate it with
 
 ## Limits
 
-- PDF pages are drawn to canvases, so their text cannot be selected or searched.
+- PDFs that are scans carry no text, so there is nothing to select or find.
 - PDFs cannot be rotated, and the Files tab shows the folder as it was when the
   document was opened.
 - A rotated GIF, SVG or AVIF is written out as PNG.

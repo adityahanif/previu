@@ -18,10 +18,29 @@ export interface Layer {
   destroy(): void;
 }
 
+/** One match inside a PDF, addressed by page and position on that page. */
+export interface FindHit {
+  /** 1-based page number. */
+  page: number;
+  /** Zero-based position of the match among that page's matches. */
+  index: number;
+}
+
+export interface FindResult {
+  /** Matches per page; element 0 belongs to page 1. */
+  counts: number[];
+}
+
 export interface PdfLayer extends Layer {
   pageCount: number;
   currentPage(): number;
   goToPage(page: number): void;
   onPageChange(listener: (page: number) => void): () => void;
   renderThumbnail(page: number, canvas: HTMLCanvasElement): Promise<void>;
+  /** Counts `query` on every page without touching the DOM. */
+  findAll(query: string): Promise<FindResult>;
+  /** Scrolls to a match, highlights it, and leaves it as the current one. */
+  showHit(hit: FindHit): Promise<void>;
+  /** Drops the search state and its highlights. */
+  clearFind(): void;
 }

@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+    <!-- pdf.js's own rules for the text layer, extracted at build time. -->
+    <link rel="stylesheet" href="/pdfjs/text-layer.css" />
     <title>Previu</title>
   </head>
   <body>
@@ -36,6 +38,8 @@
             <span>Drop to open</span>
           </div>
         </main>
+
+        <div id="find" class="findbar" hidden></div>
       </div>
 
       <footer id="statusbar" class="statusbar"></footer>

@@ -19,6 +19,7 @@ export interface ToolbarActions {
   rotate(delta: number): void;
   flip(axis: "horizontal" | "vertical"): void;
   saveCopy(): void;
+  findInDocument(): void;
   present(): void;
   reveal(): void;
   setDefaultApp(): void;
@@ -152,6 +153,13 @@ export function createToolbar(actions: ToolbarActions): Toolbar {
     onclick: () => actions.saveCopy(),
   });
 
+  const find = button({
+    icon: "search",
+    label: "Find in document",
+    title: "Find in document (Ctrl+F)",
+    onclick: () => actions.findInDocument(),
+  });
+
   const present = button({
     icon: "present",
     label: "Start presentation",
@@ -181,6 +189,7 @@ export function createToolbar(actions: ToolbarActions): Toolbar {
       el("div", { class: "pill" }, [zoomOut, zoomLevel, zoomIn]),
       el("div", { class: "pill" }, [fitWidth, fitPage, actualSize]),
       el("div", { class: "pill" }, [rotateLeft, rotateRight, flipHorizontal, flipVertical]),
+      find,
       present,
       save,
       more,
@@ -220,6 +229,7 @@ export function createToolbar(actions: ToolbarActions): Toolbar {
       }
 
       save.disabled = !hasDoc || doc.kind !== "image";
+      find.disabled = !hasDoc || doc.kind !== "pdf";
       present.disabled = !hasDoc;
       more.disabled = !hasDoc;
       open.disabled = state.busy;

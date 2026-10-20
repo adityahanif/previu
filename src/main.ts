@@ -15,11 +15,13 @@ import {
   type Opened,
   type ViewState,
 } from "./types";
+import { createFindBar } from "./ui/findbar";
 import { closeMenu } from "./ui/menu";
 import { createSidebar } from "./ui/sidebar";
 import { createStatusbar } from "./ui/statusbar";
 import { createToolbar } from "./ui/toolbar";
 import { Viewer } from "./viewer";
+import type { FindHit } from "./viewer/types";
 
 /** Formats the `image` crate can write back out; anything else is saved as PNG. */
 const RECODABLE = new Set(["png", "jpg", "jpeg", "jfif", "webp", "bmp", "ico"]);
@@ -57,6 +59,7 @@ const toolbar = createToolbar({
   rotate,
   flip,
   saveCopy: () => void saveCopy(),
+  findInDocument: () => openFind(),
   present: () => togglePresentation(),
   reveal: () => {
     const doc = currentDoc();
@@ -73,9 +76,16 @@ const sidebar = createSidebar({
 
 const statusbar = createStatusbar();
 
+const findBar = createFindBar({
+  search: (query) => void runFind(query),
+  step: (delta) => void stepFind(delta),
+  close: () => closeFind(),
+});
+
 must("#toolbar").replaceWith(toolbar.element);
 must("#sidebar").replaceWith(sidebar.element);
 must("#statusbar").replaceWith(statusbar.element);
+must("#find").replaceWith(findBar.element);
 
 subscribe((state) => {
   const doc = currentDoc();
@@ -151,6 +161,7 @@ async function showAt(index: number): Promise<void> {
  * is what makes double-clicking a file in Explorer feel immediate.
  */
 async function show(doc: Doc): Promise<void> {
+  closeFind();
   setState({ loading: true, error: null }, "loading");
   dimensions = null;
   message = null;
@@ -281,6 +292,83 @@ function goToLast(): void {
 
 function toggleSidebar(): void {
   setState({ sidebarOpen: !getState().sidebarOpen }, "sidebar");
+}
+
+// --- find ----------------------------------------------------------------
+
+let findHits: FindHit[] = [];
+let findCursor = -1;
+/** Query the hits belong to; typing something else makes them stale. */
+let findQuery = "";
+
+function openFind(): void {
+  if (presenting) return;
+  if (currentDoc()?.kind !== "pdf") {
+    toast("Find works in PDF files.");
+    return;
+  }
+  findBar.open();
+}
+
+function closeFind(): void {
+  if (!findBar.isOpen()) return;
+  findBar.close();
+  findHits = [];
+  findCursor = -1;
+  findQuery = "";
+  viewer.pdf?.clearFind();
+}
+
+function findLabel(): string {
+  if (findHits.length) return `${findCursor + 1} of ${findHits.length}`;
+  return findQuery.trim() ? "No matches" : "";
+}
+
+async function runFind(query: string): Promise<void> {
+  const pdf = viewer.pdf;
+  findQuery = query;
+
+  if (!pdf || !query.trim()) {
+    findHits = [];
+    findCursor = -1;
+    findBar.setCount("");
+    pdf?.clearFind();
+    return;
+  }
+
+  const result = await pdf.findAll(query);
+  // A later keystroke owns the answer: dropping this one keeps the count, the
+  // highlight and the field from disagreeing.
+  if (findQuery !== query) return;
+
+  findHits = [];
+  result.counts.forEach((count, page) => {
+    for (let index = 0; index < count; index += 1) {
+      findHits.push({ page: page + 1, index });
+    }
+  });
+
+  findCursor = findHits.length ? 0 : -1;
+  findBar.setCount(findLabel());
+  if (findCursor >= 0) await pdf.showHit(findHits[0]!);
+}
+
+async function stepFind(delta: 1 | -1): Promise<void> {
+  const pdf = viewer.pdf;
+  if (!pdf) return;
+
+  const query = findBar.value();
+  if (query !== findQuery) {
+    // Enter straight after typing: the answer is not in yet, so this is the
+    // first jump rather than a step away from it.
+    await runFind(query);
+    return;
+  }
+  if (!findHits.length) return;
+
+  findCursor = (findCursor + delta + findHits.length) % findHits.length;
+  findBar.setCount(findLabel());
+  await pdf.showHit(findHits[findCursor]!);
 }
 
 // --- actions -------------------------------------------------------------
@@ -437,6 +525,10 @@ let pan: { x: number; y: number; left: number; top: number } | null = null;
 stage.addEventListener("pointerdown", (event) => {
   if (event.button !== 0 || !viewer.isOpen) return;
   if (!(event.target instanceof Element)) return;
+  if (event.target.closest(".textLayer")) {
+    // Text is there to be selected; a drag across it copies, it does not pan.
+    return;
+  }
   if (event.target.closest("button, a")) return;
 
   // clientWidth/clientHeight exclude the scrollbars, so anything past them is a
@@ -478,6 +570,10 @@ window.addEventListener("keydown", (event) => {
       case "s":
         event.preventDefault();
         void saveCopy();
+        return;
+      case "f":
+        event.preventDefault();
+        openFind();
         return;
       case "=":
       case "+":
@@ -590,7 +686,10 @@ window.addEventListener("keydown", (event) => {
       toggleSidebar();
       break;
     case "Escape":
-      if (presenting) {
+      if (findBar.isOpen()) {
+        event.preventDefault();
+        closeFind();
+      } else if (presenting) {
         event.preventDefault();
         void setPresentation(false);
       } else {

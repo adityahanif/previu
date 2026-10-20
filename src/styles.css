@@ -184,6 +184,9 @@ button:focus-visible {
   display: grid;
   grid-template-columns: auto 1fr;
   min-height: 0;
+  /* The find field is positioned against the workspace, not the scrolling stage,
+     so it stays put while the document moves under it. */
+  position: relative;
 }
 
 /*
@@ -484,6 +487,81 @@ kbd {
   pointer-events: none;
 }
 
+/* --- find -------------------------------------------------------------- */
+
+.findbar {
+  position: absolute;
+  top: 10px;
+  right: 26px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 5px 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--chrome);
+  box-shadow: var(--overlay);
+}
+
+.findbar-input {
+  width: 176px;
+  height: 24px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.findbar-input::placeholder {
+  color: var(--muted);
+}
+
+.findbar-input:focus {
+  outline: none;
+}
+
+.findbar-count {
+  min-width: 58px;
+  padding: 0 2px;
+  text-align: right;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.findbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--muted);
+}
+
+.findbar-button:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/*
+ * Painted by the CSS Custom Highlight API over the text layer's transparent
+ * runs, so matches show without a single node being added to the page.
+ */
+::highlight(previu-find) {
+  background-color: rgb(255 213 79 / 32%);
+}
+
+/*
+ * Kept translucent on purpose: the glyphs live in the canvas *under* the text
+ * layer, so an opaque highlight would hide the very word it marks.
+ */
+::highlight(previu-find-current) {
+  background-color: rgb(255 152 0 / 48%);
+}
+
 /* --- statusbar --------------------------------------------------------- */
 
 .statusbar {
@@ -597,7 +675,8 @@ kbd {
  */
 .is-presenting .toolbar,
 .is-presenting .statusbar,
-.is-presenting .sidebar {
+.is-presenting .sidebar,
+.is-presenting .findbar {
   display: none;
 }
 

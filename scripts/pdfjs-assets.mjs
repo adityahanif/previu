@@ -2,7 +2,7 @@
 // and CJK CMaps) into `public/pdfjs` so they ship with the app and no CDN is needed.
 //
 // Runs from `postinstall` and from the `build` npm script. Safe to re-run.
-import { cp, mkdir, rm, stat } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -59,3 +59,31 @@ for (const { name, required, skip } of SOURCES) {
 }
 
 console.log(`[pdfjs-assets] copied pdf.js assets into ${dest}`);
+
+// The text layer's rules live inside pdf.js's full viewer stylesheet. Taking just
+// that block keeps the app from shipping the viewer's annotation, editor and
+// panel styles, and extracting it here keeps it in step with the pdf.js version.
+const viewerCss = await readFile(join(pdfjsDir, "web", "pdf_viewer.css"), "utf8");
+const start = viewerCss.indexOf(".textLayer {");
+const end = start === -1 ? -1 : blockEnd(viewerCss, start);
+
+if (end === -1) {
+  console.error("[pdfjs-assets] could not find the .textLayer rules in pdf_viewer.css");
+  process.exit(1);
+}
+
+await writeFile(
+  join(dest, "text-layer.css"),
+  `/* Extracted from pdf.js (pdf_viewer.css), Apache-2.0. */\n${viewerCss.slice(start, end)}\n`,
+);
+console.log("[pdfjs-assets] wrote the text layer stylesheet");
+
+/** Index just past the brace that closes the rule starting at `start`. */
+function blockEnd(css, start) {
+  let depth = 0;
+  for (let i = start; i < css.length; i += 1) {
+    if (css[i] === "{") depth += 1;
+    else if (css[i] === "}" && --depth === 0) return i + 1;
+  }
+  return -1;
+}
