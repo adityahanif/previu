@@ -79,10 +79,8 @@ Regenerate the set with:
 npm run tauri -- icon brand/previu-icon.png -o src-tauri/icons
 ```
 
-Shortcuts show the brand tile rather than that mark: `src-tauri/icons/previu-brand.ico`
-is built from the tile above, shipped next to the executable as a resource, and
-named by both links through `src-tauri/nsis-hooks.nsh`. Regenerate it with
-`npm run tauri -- icon previu-brand.png -o <dir>` and take the `icon.ico`.
+Shortcuts, the taskbar button and the Start entry all use that mark: the
+installer names no separate icon, so Windows reads it from `previu.exe`.
 
 ## Limits
 
