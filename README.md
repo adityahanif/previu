@@ -16,7 +16,11 @@ and run it. Building from source puts the same installer in
 
 It installs for the current user only — no admin prompt — into
 `%LOCALAPPDATA%\Previu`, with a Start-menu shortcut. Needs Windows 10 or 11 with
-the WebView2 runtime. The installer is unsigned, so SmartScreen asks once.
+the WebView2 runtime.
+
+The installer is unsigned, so Windows may stop it with "Windows protected your
+PC": choose **More info → Run anyway**. Defender scans it clean, and the SHA-256
+in the release notes identifies the exact file.
 
 Windows will not let an app take over a file type on its own: after installing,
 use `⋯ › Set as default viewer…` and confirm the choice in Settings.
