@@ -69,6 +69,10 @@ Both scripts run through `scripts/tauri.mjs`, which finds a MinGW toolchain and
 keeps cargo's caches off the system drive; its comments cover the search order
 and the linker manifest workaround. Plain `npx tauri build` works too.
 
+GitHub builds the same installer on every push to `main` and uploads it as a
+run artifact; a `v*` tag opens a draft release with the installer attached
+(`.github/workflows/build.yml`).
+
 ## Icons
 
 `brand/previu-icon.png` is the icon master — `previu.png` cropped to its artwork
