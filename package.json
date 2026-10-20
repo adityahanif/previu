@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "A fast, lightweight image and PDF viewer for Windows, inspired by macOS Preview.",
+  "license": "MIT",
   "scripts": {
     "dev": "vite",
     "prebuild": "node scripts/pdfjs-assets.mjs",

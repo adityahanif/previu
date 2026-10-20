@@ -3,6 +3,7 @@ name = "previu"
 version = "0.1.0"
 description = "A fast, lightweight image and PDF viewer"
 authors = ["previu"]
+license = "MIT"
 edition = "2021"
 rust-version = "1.77"
 

@@ -81,3 +81,7 @@ npm run tauri -- icon brand/previu-icon.png -o src-tauri/icons
 - PDFs cannot be rotated, and the Files tab shows the folder as it was when the
   document was opened.
 - A rotated GIF, SVG or AVIF is written out as PNG.
+
+## License
+
+[MIT](LICENSE).
