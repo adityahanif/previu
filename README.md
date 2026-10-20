@@ -10,11 +10,9 @@ Windows, so the app is a few megabytes rather than a few hundred.
 
 ## Install
 
-Run the installer:
-
-```
-src-tauri/target/release/bundle/nsis/Previu_0.1.0_x64-setup.exe
-```
+Download the setup from the [latest release](https://github.com/adityahanif/previu/releases/latest)
+and run it. Building from source puts the same installer in
+`src-tauri/target/release/bundle/nsis/`.
 
 It installs for the current user only — no admin prompt — into
 `%LOCALAPPDATA%\Previu`, with a Start-menu shortcut. Needs Windows 10 or 11 with
