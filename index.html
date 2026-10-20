@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon.png" />
+    <title>Previu</title>
+  </head>
+  <body>
+    <div id="app">
+      <header id="toolbar" class="toolbar"></header>
+
+      <div class="workspace">
+        <aside id="sidebar" class="sidebar" hidden></aside>
+
+        <main id="stage" class="stage">
+          <div id="document" class="document"></div>
+
+          <div id="empty" class="empty">
+            <svg class="empty-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M4 5h6l1.5 2H20v12H4z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <p class="empty-title">Nothing open</p>
+            <p class="empty-hint">
+              Drop a file here, press <kbd>Ctrl</kbd>+<kbd>O</kbd>, or open one from Explorer.
+            </p>
+          </div>
+
+          <div id="drop-overlay" class="drop-overlay" hidden>
+            <span>Drop to open</span>
+          </div>
+        </main>
+      </div>
+
+      <footer id="statusbar" class="statusbar"></footer>
+    </div>
+
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

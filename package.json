@@ -1,0 +1,28 @@
+{
+  "name": "previu",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "A fast, lightweight image and PDF viewer for Windows, inspired by macOS Preview.",
+  "scripts": {
+    "dev": "vite",
+    "prebuild": "node scripts/pdfjs-assets.mjs",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "postinstall": "node scripts/pdfjs-assets.mjs",
+    "tauri": "node scripts/tauri.mjs",
+    "app": "node scripts/tauri.mjs dev",
+    "app:build": "node scripts/tauri.mjs build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "pdfjs-dist": "^6.4.299"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16"
+  }
+}

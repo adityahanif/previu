@@ -1,0 +1,47 @@
+[package]
+name = "previu"
+version = "0.1.0"
+description = "A fast, lightweight image and PDF viewer"
+authors = ["previu"]
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "previu_lib"
+# The Tauri template also asks for `staticlib` and `cdylib`, but those exist only
+# so mobile targets can link the Rust core. On windows-gnu the `cdylib` link
+# additionally fails with "export ordinal too large" once the dependency graph
+# gets big, so this desktop-only build keeps just the rlib that the binary needs.
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+percent-encoding = "2"
+image = { version = "0.25", default-features = false, features = [
+    "jpeg",
+    "png",
+    "webp",
+    "bmp",
+    "ico",
+] }
+
+[target.'cfg(windows)'.dependencies]
+tauri-plugin-single-instance = "2"
+winreg = "0.55"
+
+# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true

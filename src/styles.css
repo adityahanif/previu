@@ -1,0 +1,670 @@
+/* Previu — a light, Preview-like shell around the document stage. */
+
+:root {
+  color-scheme: light dark;
+
+  --canvas: #ececed;
+  --chrome: #f6f6f7;
+  --border: #d8d8dc;
+  --text: #1c1c1e;
+  --muted: #6e6e76;
+  --accent: #2f6fed;
+  --hover: rgb(0 0 0 / 6%);
+  --pressed: rgb(0 0 0 / 11%);
+  --sheet: #ffffff;
+  --shadow: 0 1px 2px rgb(0 0 0 / 14%), 0 8px 22px rgb(0 0 0 / 10%);
+  --overlay: 0 12px 34px rgb(0 0 0 / 24%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --canvas: #1b1b1d;
+    --chrome: #29292c;
+    --border: #3b3b3f;
+    --text: #f1f1f3;
+    --muted: #9a9aa2;
+    --accent: #6ea1ff;
+    --hover: rgb(255 255 255 / 9%);
+    --pressed: rgb(255 255 255 / 16%);
+    --sheet: #ffffff;
+    --shadow: 0 1px 2px rgb(0 0 0 / 50%), 0 8px 22px rgb(0 0 0 / 40%);
+    --overlay: 0 12px 34px rgb(0 0 0 / 55%);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--chrome);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.34;
+  cursor: default;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+#app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100vh;
+}
+
+/* --- toolbar ----------------------------------------------------------- */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 46px;
+  padding: 0 10px;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolbar-end {
+  margin-left: auto;
+}
+
+/* Dividers between control clusters, rather than boxed groups. */
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.pill + .pill {
+  margin-left: 5px;
+  padding-left: 6px;
+  border-left: 1px solid var(--border);
+}
+
+.toolbar-end > .tool + .tool {
+  margin-left: 4px;
+}
+
+.tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  flex: none;
+}
+
+.tool:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.tool:active:not(:disabled) {
+  background: var(--pressed);
+}
+
+.tool.is-active {
+  background: var(--pressed);
+  color: var(--accent);
+}
+
+.tool-labeled {
+  width: auto;
+  padding: 0 11px 0 9px;
+}
+
+.tool-text {
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.position,
+.zoom-level {
+  height: 30px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.position {
+  min-width: 62px;
+  padding: 0 6px;
+}
+
+.zoom-level {
+  min-width: 54px;
+  padding: 0 6px;
+  font-weight: 500;
+}
+
+.position:hover:not(:disabled),
+.zoom-level:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+/* --- workspace --------------------------------------------------------- */
+
+.workspace {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  min-height: 0;
+}
+
+/*
+ * Placement is explicit because the sidebar is `display: none` when closed, and
+ * a hidden element is not a grid item. Left to auto-placement the stage would
+ * then land in the `auto` column and shrink-wrap its content, so the stage would
+ * be as wide as the document rather than as wide as the window.
+ */
+.sidebar {
+  grid-column: 1;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  width: 212px;
+  min-height: 0;
+  background: var(--chrome);
+  border-right: 1px solid var(--border);
+}
+
+.sidebar-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-tab {
+  flex: 1;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sidebar-tab:hover:not(.is-active) {
+  background: var(--hover);
+}
+
+.sidebar-tab.is-active {
+  background: var(--pressed);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 0;
+  padding: 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/*
+ * The Files tab keeps its controls fixed and scrolls only the list, so it is a
+ * grid of its own rather than one more row of the sidebar's.
+ */
+.files-panel {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.files-controls {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.files-search,
+.files-sort {
+  height: 26px;
+  min-width: 0;
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+
+.files-search::placeholder {
+  color: var(--muted);
+}
+
+.files-search:focus-visible,
+.files-sort:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.files-empty {
+  margin: 0;
+  padding: 8px 12px 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pdf-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+}
+
+.pdf-thumb:hover {
+  background: var(--hover);
+}
+
+.pdf-thumb.is-current {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.pdf-thumb canvas {
+  background: var(--sheet);
+  box-shadow: var(--shadow);
+  border-radius: 2px;
+}
+
+.pdf-thumb-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pdf-thumb.is-current .pdf-thumb-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.file-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  text-align: left;
+  color: var(--text);
+}
+
+.file-entry svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.file-entry:hover {
+  background: var(--hover);
+}
+
+.file-entry.is-current {
+  background: var(--pressed);
+  font-weight: 600;
+}
+
+.file-entry.is-current svg {
+  color: var(--accent);
+}
+
+.file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --- stage ------------------------------------------------------------- */
+
+.stage {
+  grid-column: 2;
+  position: relative;
+  min-width: 0;
+  padding: 24px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  /* Reserving the gutter keeps clientWidth constant. Without it, fitting to
+     width makes the document tall enough to need a scrollbar, which narrows the
+     stage after the zoom was already computed, so "fit width" never quite fits. */
+  scrollbar-gutter: stable;
+  background: var(--canvas);
+}
+
+.stage.is-panning {
+  cursor: grabbing;
+}
+
+/*
+ * Shrink-wrapped to its content so `margin-inline: auto` centres small
+ * documents while wider ones scroll. All zoom-to-cursor maths measures this box.
+ */
+.document {
+  width: max-content;
+  margin-inline: auto;
+}
+
+.image-frame {
+  position: relative;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 8%), var(--shadow);
+}
+
+.image-frame img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  max-width: none;
+  transform-origin: center;
+  -webkit-user-drag: none;
+}
+
+.pdf-stack {
+  display: flex;
+  flex-direction: column;
+  /* Pages carry an explicit width; centring them keeps a mixed-size document
+     look intentional. The stack's own width is set alongside them in the layer,
+     so this never feeds back into the container's size. */
+  align-items: center;
+  gap: 12px;
+}
+
+.pdf-page {
+  position: relative;
+  background: var(--sheet);
+  box-shadow: var(--shadow);
+}
+
+.pdf-canvas {
+  display: block;
+  opacity: 0;
+  transition: opacity 0.12s ease-out;
+}
+
+.pdf-page.is-rendered .pdf-canvas {
+  opacity: 1;
+}
+
+.empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 4px;
+  padding: 24px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.empty-icon {
+  width: 46px;
+  height: 46px;
+  color: var(--muted);
+  opacity: 0.55;
+}
+
+.empty-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.empty-hint {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--chrome);
+  font-family: inherit;
+  font-size: 11.5px;
+}
+
+/* Fixed rather than absolute: the stage scrolls, and the overlay must cover the
+   visible window even when the document is scrolled halfway down. */
+.drop-overlay {
+  position: fixed;
+  inset: 10px;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--accent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--canvas));
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* --- statusbar --------------------------------------------------------- */
+
+.statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 26px;
+  padding: 0 12px;
+  font-size: 11.5px;
+  color: var(--muted);
+  background: var(--chrome);
+  border-top: 1px solid var(--border);
+  user-select: none;
+}
+
+.status-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.status-name {
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-meta {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-right {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-right.is-error {
+  color: #d93025;
+  font-weight: 500;
+}
+
+@media (prefers-color-scheme: dark) {
+  .status-right.is-error {
+    color: #ff8a80;
+  }
+}
+
+/* --- menus ------------------------------------------------------------- */
+
+.menu {
+  position: fixed;
+  z-index: 100;
+  min-width: 196px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--chrome);
+  box-shadow: var(--overlay);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  text-align: left;
+}
+
+.menu-item:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+}
+
+.menu-check {
+  width: 13px;
+  flex: none;
+  color: var(--accent);
+}
+
+.menu-item:hover .menu-check {
+  color: #fff;
+}
+
+.menu-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--border);
+}
+
+/* --- presentation ------------------------------------------------------ */
+
+/*
+ * Full screen drops the shell so the page is all that is on screen. The stage
+ * keeps its 24px padding because the fit maths assume it, and gives up only the
+ * reserved scrollbar gutter, so a fitted page ends up centred.
+ */
+.is-presenting .toolbar,
+.is-presenting .statusbar,
+.is-presenting .sidebar {
+  display: none;
+}
+
+.is-presenting .stage {
+  /* No vertical inset: a fitted page spans the screen edge to edge, so the next
+     page cannot peek through under it. */
+  padding-block: 0;
+  background: #000;
+  /* The strip the scrollbar would occupy would offset the page sideways. */
+  scrollbar-width: none;
+}
+
+.is-presenting .stage::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.is-presenting .image-frame {
+  box-shadow: none;
+}
+
+/* --- toasts ------------------------------------------------------------ */
+
+.toasts {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast {
+  padding: 8px 15px;
+  border-radius: 999px;
+  background: #2c2c30;
+  color: #f6f6f8;
+  font-size: 12.5px;
+  box-shadow: var(--overlay);
+  animation: toast-in 0.16s ease-out;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast-error {
+  background: #b3261e;
+  max-width: 60ch;
+}
+
+.toast-out {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
