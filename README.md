@@ -29,7 +29,7 @@ use `⋯ › Set as default viewer…` and confirm the choice in Settings.
 
 - Images: PNG, JPEG, JFIF, GIF, WebP, BMP, ICO, SVG, AVIF
 - PDFs rendered with pdf.js, with a thumbnail sidebar
-- Selectable text in PDFs, and find (`Ctrl`+`F`) across the document
+- Select, copy and find (`Ctrl`+`F`) text in PDFs
 - Zoom, pan, fit width, fit page, actual size
 - The rest of the folder in a Files tab, with a name filter and sorting
 - Rotation and flips for images, saved as a copy — the original is never touched
@@ -94,8 +94,6 @@ Files get their own marks instead: `src-tauri/icons/filetypes/pdf.ico` and
 
 ## Limits
 
-- Scanned PDFs are pictures of pages, so they carry no text layer: there is
-  nothing to select, copy or find in them. PDFs with real text work fully.
 - PDFs cannot be rotated, and the Files tab shows the folder as it was when the
   document was opened.
 - A rotated GIF, SVG or AVIF is written out as PNG.
