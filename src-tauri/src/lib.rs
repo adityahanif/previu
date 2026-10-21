@@ -244,6 +244,13 @@ pub fn run() {
             if let Some(path) = first_file_arg() {
                 app.state::<PendingOpen>().set(path);
             }
+            // An install that is already registered keeps its registry entries
+            // across updates, so renew them on launch: that is how a new
+            // release's file icons reach the shell without the user pressing
+            // "Set as default viewer" again.
+            if assoc::status().registered {
+                let _ = assoc::register();
+            }
             Ok(())
         })
         .run(tauri::generate_context!())

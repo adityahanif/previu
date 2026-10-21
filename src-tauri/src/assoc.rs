@@ -55,6 +55,19 @@ mod platform {
         format!("\"{exe}\",0")
     }
 
+    /// Icon for one file type. Falls back to the app icon when the .ico is not
+    /// next to the executable (for example in `npm run app` development builds).
+    fn file_icon(exe: &str, ext: &str) -> String {
+        let name = if ext == "pdf" { "pdf.ico" } else { "image.ico" };
+        let path = std::path::Path::new(exe)
+            .parent()
+            .map(|dir| dir.join("filetypes").join(name));
+        match path {
+            Some(p) if p.exists() => format!("\"{}\"", p.display()),
+            _ => icon(exe),
+        }
+    }
+
     pub fn register() -> Result<AssocStatus, String> {
         let exe = std::env::current_exe()
             .map_err(|e| format!("cannot locate the running executable: {e}"))?;
@@ -74,7 +87,7 @@ mod platform {
             let (icon_key, _) = hkcu
                 .create_subkey(format!("Software\\Classes\\{prog_id}\\DefaultIcon"))
                 .map_err(fail)?;
-            icon_key.set_value("", &icon(&exe)).map_err(fail)?;
+            icon_key.set_value("", &file_icon(&exe, ext)).map_err(fail)?;
 
             let (cmd_key, _) = hkcu
                 .create_subkey(format!("Software\\Classes\\{prog_id}\\shell\\open\\command"))
@@ -136,6 +149,18 @@ mod platform {
         registered
             .set_value("Previu", &CAPS_KEY)
             .map_err(fail)?;
+
+        // Tell Explorer that file associations changed so it reloads the icons.
+        // `SHCNE_ASSOCCHANGED` is a u32 constant but the exported function takes
+        // a plain i32, so the value is cast rather than converted at runtime.
+        unsafe {
+            windows_sys::Win32::UI::Shell::SHChangeNotify(
+                windows_sys::Win32::UI::Shell::SHCNE_ASSOCCHANGED as i32,
+                windows_sys::Win32::UI::Shell::SHCNF_IDLIST,
+                std::ptr::null(),
+                std::ptr::null(),
+            );
+        }
 
         Ok(status())
     }

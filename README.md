@@ -86,9 +86,16 @@ npm run tauri -- icon brand/previu-icon.png -o src-tauri/icons
 Shortcuts, the taskbar button and the Start entry all use that mark: the
 installer names no separate icon, so Windows reads it from `previu.exe`.
 
+Files get their own marks instead: `src-tauri/icons/filetypes/pdf.ico` and
+`image.ico`, built from the 1024 px masters in `brand/filetypes/`. Each ProgID's
+`DefaultIcon` names one of them (`src-tauri/src/assoc.rs`), and
+`bundle.resources` installs them into `filetypes/` next to the executable, so a
+`.pdf` and a `.png` no longer look like the application itself.
+
 ## Limits
 
-- PDFs that are scans carry no text, so there is nothing to select or find.
+- Scanned PDFs are pictures of pages, so they carry no text layer: there is
+  nothing to select, copy or find in them. PDFs with real text work fully.
 - PDFs cannot be rotated, and the Files tab shows the folder as it was when the
   document was opened.
 - A rotated GIF, SVG or AVIF is written out as PNG.
