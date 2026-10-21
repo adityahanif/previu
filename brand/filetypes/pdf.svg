@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="PDF file">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="112" x2="0" y2="912" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F4553F"/>
+      <stop offset="0.55" stop-color="#DE2A1F"/>
+      <stop offset="1" stop-color="#C41810"/>
+    </linearGradient>
+    <clipPath id="page">
+      <path d="M296 112 H612 L792 292 V848 A64 64 0 0 1 728 912 H296 A64 64 0 0 1 232 848 V176 A64 64 0 0 1 296 112 Z"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#page)">
+    <rect x="232" y="112" width="560" height="800" fill="url(#paper)"/>
+    <path d="M612 112 L792 292 H652 Q612 292 612 252 Z" fill="#FFFFFF" opacity="0.24"/>
+    <path d="M612 112 L792 292 H652 Q612 292 612 252 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="6"/>
+  </g>
+
+  <g fill="none" stroke="#FFFFFF" stroke-width="40" stroke-linecap="round" stroke-linejoin="round" transform="translate(309 458) scale(0.836)">
+    <g transform="translate(0 0)">
+      <path d="M20 180 V20 H75 A45 45 0 0 1 75 110 H20"/>
+    </g>
+    <g transform="translate(170 0)">
+      <path d="M20 20 H55 A80 80 0 0 1 55 180 H20 Z"/>
+    </g>
+    <g transform="translate(355 0)">
+      <path d="M20 180 V20 H110 M20 100 H95"/>
+    </g>
+  </g>
+</svg>

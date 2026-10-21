@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Image file">
+  <defs>
+    <linearGradient id="paper" x1="0" y1="112" x2="0" y2="912" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#B583FF"/>
+      <stop offset="0.55" stop-color="#8B45F0"/>
+      <stop offset="1" stop-color="#6626D9"/>
+    </linearGradient>
+    <clipPath id="page">
+      <path d="M296 112 H612 L792 292 V848 A64 64 0 0 1 728 912 H296 A64 64 0 0 1 232 848 V176 A64 64 0 0 1 296 112 Z"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#page)">
+    <rect x="232" y="112" width="560" height="800" fill="url(#paper)"/>
+    <path d="M612 112 L792 292 H652 Q612 292 612 252 Z" fill="#FFFFFF" opacity="0.24"/>
+    <path d="M612 112 L792 292 H652 Q612 292 612 252 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="6"/>
+  </g>
+
+  <g fill="#FFFFFF">
+    <circle cx="636" cy="420" r="40"/>
+    <path d="M330 668 L468 442 L542 556 L604 488 L700 668 Z"
+          fill="#FFFFFF" stroke="#FFFFFF" stroke-width="26" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+</svg>
