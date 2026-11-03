@@ -8,7 +8,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 
-import type { Doc, DocKind, Opened } from "./types";
+import type { CropRect, Doc, DocKind, Opened } from "./types";
 
 export const isNative =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -89,6 +89,66 @@ function pickFiles(): Promise<Opened | null> {
     input.addEventListener("cancel", () => resolve(null));
     input.click();
   });
+}
+
+/**
+ * Browser-mode crop: bake flips, then the rotation, then cut the crop out of
+ * the result — the same order the native save uses, so coordinates agree.
+ */
+async function renderCrop(
+  url: string,
+  rotation: number,
+  flipH: boolean,
+  flipV: boolean,
+  crop: CropRect,
+  destName: string,
+): Promise<Blob> {
+  const source = new Image();
+  source.src = url;
+  await new Promise<void>((resolve, reject) => {
+    if (source.complete && source.naturalWidth > 0) resolve();
+    else {
+      source.addEventListener("load", () => resolve(), { once: true });
+      source.addEventListener("error", () => reject(new Error("Cannot decode the image")), {
+        once: true,
+      });
+    }
+  });
+
+  const flipped = document.createElement("canvas");
+  flipped.width = source.naturalWidth || 800;
+  flipped.height = source.naturalHeight || 600;
+  const flipCtx = flipped.getContext("2d");
+  if (!flipCtx) throw new Error("Canvas is not available");
+  flipCtx.translate(flipH ? flipped.width : 0, flipV ? flipped.height : 0);
+  flipCtx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
+  flipCtx.drawImage(source, 0, 0, flipped.width, flipped.height);
+
+  const quarterTurn = ((rotation % 360) + 360) % 180 !== 0;
+  const turned = document.createElement("canvas");
+  turned.width = quarterTurn ? flipped.height : flipped.width;
+  turned.height = quarterTurn ? flipped.width : flipped.height;
+  const turnCtx = turned.getContext("2d");
+  if (!turnCtx) throw new Error("Canvas is not available");
+  turnCtx.translate(turned.width / 2, turned.height / 2);
+  turnCtx.rotate((((rotation % 360) + 360) % 360) * (Math.PI / 180));
+  turnCtx.drawImage(flipped, -flipped.width / 2, -flipped.height / 2);
+
+  const out = document.createElement("canvas");
+  out.width = crop.width;
+  out.height = crop.height;
+  const outCtx = out.getContext("2d");
+  if (!outCtx) throw new Error("Canvas is not available");
+  outCtx.drawImage(turned, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+
+  const type = /\.jpe?g$/i.test(destName) ? "image/jpeg" : "image/png";
+  return new Promise((resolve, reject) =>
+    out.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Cannot encode the cropped image"))),
+      type,
+      0.92,
+    ),
+  );
 }
 
 export const bridge = {
@@ -185,7 +245,10 @@ export const bridge = {
 
   /**
    * Native only: write `src` to `dest` with the viewer's rotation and flips baked
-   * in. Browser mode falls back to a download so the preview stays usable.
+   * in, then crop in that displayed orientation when a crop is given. Browser
+   * mode falls back to a download so the preview stays usable — a plain download
+   * without a crop, and a canvas render with one, so the crop is honoured there
+   * too.
    */
   async saveCopy(
     src: string,
@@ -193,17 +256,27 @@ export const bridge = {
     rotation: number,
     flipH: boolean,
     flipV: boolean,
+    crop: CropRect | null = null,
   ): Promise<void> {
     if (isNative) {
-      await invoke("save_copy", { src, dest, rotation, flipH, flipV });
+      await invoke("save_copy", { src, dest, rotation, flipH, flipV, crop });
       return;
     }
     const doc = browserDocs.get(src);
     if (!doc) throw new Error("Source is no longer available");
+    if (!crop) {
+      const link = document.createElement("a");
+      link.href = doc.url;
+      link.download = dest;
+      link.click();
+      return;
+    }
+    const blob = await renderCrop(doc.url, rotation, flipH, flipV, crop, dest);
     const link = document.createElement("a");
-    link.href = doc.url;
+    link.href = URL.createObjectURL(blob);
     link.download = dest;
     link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 4000);
   },
 
   async assocStatus(): Promise<AssocStatus> {

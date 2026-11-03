@@ -75,8 +75,112 @@ button:focus-visible {
 
 #app {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto auto 1fr auto;
   height: 100vh;
+}
+
+/* --- document tabs ------------------------------------------------------- */
+
+.tabbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--chrome);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+
+.tabbar-list {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabbar-list::-webkit-scrollbar {
+  display: none;
+}
+
+.doc-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 210px;
+  height: 28px;
+  padding: 0 4px 0 9px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  flex: none;
+}
+
+.doc-tab:hover {
+  background: var(--hover);
+}
+
+.doc-tab.is-active {
+  background: var(--canvas);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.doc-tab.is-drop-target {
+  border-color: var(--accent);
+}
+
+.doc-tab svg {
+  flex: none;
+}
+
+.doc-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.doc-tab-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+
+.doc-tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  color: var(--muted);
+  flex: none;
+}
+
+.doc-tab-close:hover {
+  background: var(--pressed);
+  color: var(--text);
+}
+
+.tabbar-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  color: var(--muted);
+  flex: none;
+}
+
+.tabbar-add:hover {
+  background: var(--hover);
+  color: var(--text);
 }
 
 /* --- toolbar ----------------------------------------------------------- */
@@ -666,6 +770,131 @@ kbd {
   background: var(--border);
 }
 
+/* --- crop -------------------------------------------------------------- */
+
+.crop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.crop-selection {
+  position: fixed;
+  border: 1.5px solid #fff;
+  box-shadow:
+    0 0 0 9999px rgb(0 0 0 / 55%),
+    inset 0 0 0 1px rgb(0 0 0 / 35%);
+  cursor: move;
+}
+
+/* Rule-of-thirds guides, drawn with the two pseudo-elements. */
+.crop-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.crop-grid::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 33.333%;
+  right: 33.333%;
+  border-left: 1px solid rgb(255 255 255 / 45%);
+  border-right: 1px solid rgb(255 255 255 / 45%);
+}
+
+.crop-grid::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 33.333%;
+  bottom: 33.333%;
+  border-top: 1px solid rgb(255 255 255 / 45%);
+  border-bottom: 1px solid rgb(255 255 255 / 45%);
+}
+
+.crop-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 1px solid rgb(0 0 0 / 45%);
+  border-radius: 3px;
+  background: #fff;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+.crop-bar {
+  position: fixed;
+  top: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100vw - 24px);
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--chrome);
+  box-shadow: var(--overlay);
+  cursor: default;
+  user-select: none;
+}
+
+.crop-title {
+  font-weight: 600;
+  padding-left: 4px;
+}
+
+.crop-ratio {
+  height: 26px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+
+.crop-size {
+  min-width: 120px;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.crop-button,
+.crop-apply {
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.crop-button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.crop-apply {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.crop-apply:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
 /* --- presentation ------------------------------------------------------ */
 
 /*
@@ -674,6 +903,7 @@ kbd {
  * reserved scrollbar gutter, so a fitted page ends up centred.
  */
 .is-presenting .toolbar,
+.is-presenting .tabbar,
 .is-presenting .statusbar,
 .is-presenting .sidebar,
 .is-presenting .findbar {

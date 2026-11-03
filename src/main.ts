@@ -10,15 +10,19 @@ import {
   isTransformed,
   zoomIn,
   zoomOut,
+  type CropRect,
   type Doc,
   type FitMode,
   type Opened,
+  type TabState,
   type ViewState,
 } from "./types";
+import { createCropSession, type CropSession } from "./ui/crop";
 import { createFindBar } from "./ui/findbar";
 import { closeMenu } from "./ui/menu";
 import { createSidebar } from "./ui/sidebar";
 import { createStatusbar } from "./ui/statusbar";
+import { createTabbar } from "./ui/tabbar";
 import { createToolbar } from "./ui/toolbar";
 import { Viewer } from "./viewer";
 import type { FindHit } from "./viewer/types";
@@ -43,6 +47,9 @@ let presenting = false;
 let restoreView: { fit: FitMode; zoom: number } | null = null;
 let hinted = false;
 
+/** The running crop interaction, while the user is framing an area. */
+let cropSession: CropSession | null = null;
+
 const toolbar = createToolbar({
   toggleSidebar,
   openFile,
@@ -58,6 +65,7 @@ const toolbar = createToolbar({
   actualSize: () => applyView({ ...getState().view, zoom: 1, fit: "custom" }),
   rotate,
   flip,
+  crop: () => toggleCrop(),
   saveCopy: () => void saveCopy(),
   findInDocument: () => openFind(),
   present: () => togglePresentation(),
@@ -66,6 +74,13 @@ const toolbar = createToolbar({
     if (doc) void bridge.reveal(doc.path);
   },
   setDefaultApp: () => void setDefaultApp(),
+});
+
+const tabbar = createTabbar({
+  activate: (id) => void activateTab(id),
+  close: (id) => void closeTab(id),
+  add: () => void openFile(),
+  reorder: (fromId, toId) => reorderTab(fromId, toId),
 });
 
 const sidebar = createSidebar({
@@ -83,6 +98,7 @@ const findBar = createFindBar({
 });
 
 must("#toolbar").replaceWith(toolbar.element);
+must("#tabbar").replaceWith(tabbar.element);
 must("#sidebar").replaceWith(sidebar.element);
 must("#statusbar").replaceWith(statusbar.element);
 must("#find").replaceWith(findBar.element);
@@ -96,8 +112,10 @@ subscribe((state) => {
     view: state.view,
     sidebarOpen: state.sidebarOpen,
     canRotate: viewer.supportsRotation,
+    cropping: cropSession !== null,
     busy: state.loading,
   });
+  tabbar.update({ tabs: state.tabs, activeId: state.activeTabId });
   sidebar.update({
     open: state.sidebarOpen,
     tab: state.sidebarTab,
@@ -119,14 +137,114 @@ subscribe((state) => {
 
 // --- opening -------------------------------------------------------------
 
+let nextTabId = 1;
+
+/**
+ * Opens `opened` in a tab. A document that is already open — in its own tab,
+ * or as a sibling inside another tab's folder — is switched to rather than
+ * opened twice.
+ */
 async function adopt(opened: Opened): Promise<void> {
   const doc = opened.siblings[opened.index] ?? opened.siblings[0];
   if (!doc) return;
+
+  const { tabs } = getState();
+  const own = tabs.find((tab) => tab.doc.path === doc.path);
+  if (own) {
+    await activateTab(own.id);
+    return;
+  }
+  const containing = tabs.find((tab) =>
+    tab.siblings.some((sibling) => sibling.path === doc.path),
+  );
+  if (containing) {
+    await activateTab(containing.id);
+    const index = containing.siblings.findIndex((sibling) => sibling.path === doc.path);
+    if (index >= 0 && index !== getState().index) await showAt(index);
+    return;
+  }
+
+  const tab: TabState = {
+    id: nextTabId++,
+    doc,
+    siblings: opened.siblings,
+    index: opened.index,
+    folder: opened.folder,
+    view: initialView(),
+  };
+  setState({ tabs: [...tabs, tab], activeTabId: tab.id }, "tabs");
   setState(
-    { siblings: opened.siblings, index: opened.index, folder: opened.folder },
+    { siblings: tab.siblings, index: tab.index, folder: tab.folder },
     "siblings",
   );
   await show(doc);
+}
+
+/** Switches to a tab and restores the view that tab was left with. */
+async function activateTab(id: number): Promise<void> {
+  const state = getState();
+  if (id === state.activeTabId) return;
+  const tab = state.tabs.find((entry) => entry.id === id);
+  if (!tab) return;
+  setState({ activeTabId: tab.id }, "tabs");
+  setState({ siblings: tab.siblings, index: tab.index, folder: tab.folder }, "siblings");
+  await show(tab.doc, tab.view);
+}
+
+async function closeTab(id: number): Promise<void> {
+  const state = getState();
+  const at = state.tabs.findIndex((tab) => tab.id === id);
+  if (at < 0) return;
+  const tabs = state.tabs.filter((tab) => tab.id !== id);
+
+  if (id !== state.activeTabId) {
+    setState({ tabs }, "tabs");
+    return;
+  }
+
+  if (!tabs.length) {
+    endCrop();
+    viewer.close();
+    dimensions = null;
+    message = null;
+    setState(
+      {
+        tabs,
+        activeTabId: null,
+        siblings: [],
+        index: 0,
+        folder: null,
+        view: initialView(),
+        error: null,
+      },
+      "tabs",
+    );
+    void bridge.setTitle("Previu");
+    return;
+  }
+
+  setState({ tabs, activeTabId: null }, "tabs");
+  const neighbour = tabs[Math.min(at, tabs.length - 1)]!;
+  await activateTab(neighbour.id);
+}
+
+function cycleTab(delta: number): void {
+  const { tabs, activeTabId } = getState();
+  if (tabs.length < 2) return;
+  const at = tabs.findIndex((tab) => tab.id === activeTabId);
+  const next = tabs[(at + delta + tabs.length) % tabs.length]!;
+  void activateTab(next.id);
+}
+
+function reorderTab(fromId: number, toId: number): void {
+  const { tabs } = getState();
+  const from = tabs.findIndex((tab) => tab.id === fromId);
+  const to = tabs.findIndex((tab) => tab.id === toId);
+  if (from < 0 || to < 0 || from === to) return;
+  const next = [...tabs];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved!);
+  setState({ tabs: next }, "tabs");
 }
 
 async function openPath(path: string): Promise<void> {
@@ -157,10 +275,12 @@ async function showAt(index: number): Promise<void> {
 }
 
 /**
- * Renders `doc` and resets the view. A new document always opens fitted, which
- * is what makes double-clicking a file in Explorer feel immediate.
+ * Renders `doc`. A new document always opens fitted, which is what makes
+ * double-clicking a file in Explorer feel immediate; a document reached by
+ * switching tabs passes its saved view, so it comes back the way it was left.
  */
-async function show(doc: Doc): Promise<void> {
+async function show(doc: Doc, savedView?: ViewState): Promise<void> {
+  endCrop();
   closeFind();
   setState({ loading: true, error: null }, "loading");
   dimensions = null;
@@ -180,10 +300,11 @@ async function show(doc: Doc): Promise<void> {
     if (base) dimensions = `${Math.round(base.width)} × ${Math.round(base.height)}`;
 
     const start: ViewState = {
-      ...initialView(),
+      ...(savedView ?? initialView()),
       pageCount: viewer.pdf?.pageCount ?? 1,
     };
     applyView(start);
+    if (doc.kind === "pdf" && start.page > 1) viewer.pdf?.goToPage(start.page);
     void bridge.setTitle(`${doc.name} — Previu`);
   } catch (error) {
     fail(error);
@@ -411,6 +532,82 @@ async function saveCopy(): Promise<void> {
   }
 }
 
+// --- crop ----------------------------------------------------------------
+
+/** Ends any running crop without applying it, e.g. because the document changed. */
+function endCrop(): void {
+  if (!cropSession) return;
+  cropSession.destroy();
+  cropSession = null;
+  setState({}, "view");
+}
+
+function toggleCrop(): void {
+  if (cropSession) {
+    endCrop();
+    return;
+  }
+  const doc = currentDoc();
+  if (!doc || doc.kind !== "image" || presenting) return;
+
+  const info = viewer.imageInfo();
+  if (!info) {
+    toast("This image cannot be cropped.");
+    return;
+  }
+
+  const rect = info.element.getBoundingClientRect();
+  cropSession = createCropSession({
+    bounds: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+    displayed: info.displayed,
+    onApply: (crop) => {
+      cropSession = null;
+      setState({}, "view");
+      void applyCrop(crop);
+    },
+    onCancel: () => {
+      cropSession = null;
+      setState({}, "view");
+    },
+  });
+  setState({}, "view");
+}
+
+function suggestedCropName(doc: Doc): string {
+  const dot = doc.name.lastIndexOf(".");
+  const stem = dot > 0 ? doc.name.slice(0, dot) : doc.name;
+  return `${stem}-cropped.${RECODABLE.has(doc.ext) ? doc.ext : "png"}`;
+}
+
+/**
+ * Writes the framed area — with the current rotation and flips baked in — to
+ * a copy the user names, then opens that copy in its own tab so the result is
+ * on screen. The original is never touched, as with a rotated save.
+ */
+async function applyCrop(crop: CropRect): Promise<void> {
+  const state = getState();
+  const doc = currentDoc();
+  if (!doc || doc.kind !== "image") return;
+
+  const dest = await bridge.saveDialog(suggestedCropName(doc));
+  if (!dest) return;
+
+  try {
+    await bridge.saveCopy(
+      doc.path,
+      dest,
+      state.view.rotation,
+      state.view.flipH,
+      state.view.flipV,
+      crop,
+    );
+    toast(`Saved ${baseName(dest)}`);
+    if (bridge.isNative) await openPath(dest);
+  } catch (error) {
+    fail(error);
+  }
+}
+
 async function setDefaultApp(): Promise<void> {
   try {
     const status = await bridge.registerAssoc();
@@ -561,11 +758,36 @@ window.addEventListener("keydown", (event) => {
   const state = getState();
   const doc = currentDoc();
 
+  // While cropping, the crop session owns the keyboard: Enter applies, Esc
+  // cancels, arrows nudge the frame. Nothing else may move the document
+  // underneath the frame the user is placing.
+  if (cropSession) return;
+
   if (event.ctrlKey || event.metaKey) {
     switch (event.key) {
       case "o":
         event.preventDefault();
         void openFile();
+        return;
+      case "Tab":
+        event.preventDefault();
+        cycleTab(event.shiftKey ? -1 : 1);
+        return;
+      case "w":
+        event.preventDefault();
+        if (state.activeTabId !== null) void closeTab(state.activeTabId);
+        return;
+      case "t":
+        event.preventDefault();
+        void openFile();
+        return;
+      case "PageDown":
+        event.preventDefault();
+        cycleTab(1);
+        return;
+      case "PageUp":
+        event.preventDefault();
+        cycleTab(-1);
         return;
       case "s":
         event.preventDefault();
@@ -685,6 +907,11 @@ window.addEventListener("keydown", (event) => {
       event.preventDefault();
       toggleSidebar();
       break;
+    case "c":
+    case "C":
+      event.preventDefault();
+      toggleCrop();
+      break;
     case "Escape":
       if (findBar.isOpen()) {
         event.preventDefault();
@@ -723,8 +950,10 @@ document.addEventListener("fullscreenchange", () => void syncPresentation());
 async function start(): Promise<void> {
   await bridge.onDrop({
     onDrop: (paths) => {
-      const first = paths[0];
-      if (first) void openPath(first);
+      // Every dropped file gets its own tab, in the order they were dropped.
+      void (async () => {
+        for (const path of paths) await openPath(path);
+      })();
     },
     onHover: (active) => {
       dropOverlay.hidden = !active;

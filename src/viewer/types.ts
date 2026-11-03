@@ -15,7 +15,19 @@ export interface Layer {
   setZoom(zoom: number): void;
   /** Absent for layers that cannot be rotated, such as a multi-page PDF. */
   setRotation?(rotation: number, flipH: boolean, flipV: boolean): void;
+  /** Absent for layers with no single raster image on screen, such as a PDF. */
+  imageInfo?(): ImageInfo;
   destroy(): void;
+}
+
+/** What the crop tool needs to know about the image on screen. */
+export interface ImageInfo {
+  /** The rendered `<img>`; its bounding box is the displayed image's box. */
+  element: HTMLImageElement;
+  /** Intrinsic size in the displayed orientation (quarter turns swap axes). */
+  displayed: Size;
+  /** Intrinsic size as stored in the file. */
+  natural: Size;
 }
 
 /** One match inside a PDF, addressed by page and position on that page. */

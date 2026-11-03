@@ -1,4 +1,4 @@
-import { initialView, type Doc, type ViewState } from "./types";
+import { initialView, type Doc, type TabState, type ViewState } from "./types";
 
 export interface AppState {
   /** Directory whose siblings are offered for navigation. */
@@ -6,6 +6,9 @@ export interface AppState {
   siblings: Doc[];
   index: number;
   view: ViewState;
+  /** Open document tabs; the fields above mirror the active one. */
+  tabs: TabState[];
+  activeTabId: number | null;
   sidebarOpen: boolean;
   sidebarTab: "pages" | "files";
   loading: boolean;
@@ -13,7 +16,7 @@ export interface AppState {
   error: string | null;
 }
 
-export type ChangeReason = "document" | "view" | "siblings" | "sidebar" | "loading";
+export type ChangeReason = "document" | "view" | "siblings" | "sidebar" | "loading" | "tabs";
 
 type Listener = (state: AppState, reason: ChangeReason) => void;
 
@@ -24,6 +27,8 @@ let state: AppState = {
   siblings: [],
   index: 0,
   view: initialView(),
+  tabs: [],
+  activeTabId: null,
   sidebarOpen: false,
   sidebarTab: "pages",
   loading: false,
@@ -41,6 +46,23 @@ export function subscribe(listener: Listener): () => void {
 
 export function setState(patch: Partial<AppState>, reason: ChangeReason): void {
   state = { ...state, ...patch };
+
+  // The active tab is the record tabs are restored from, so anything that
+  // moves the mirrored fields — navigating siblings, changing the view —
+  // is written through to it.
+  const active = state.tabs.find((tab) => tab.id === state.activeTabId);
+  if (
+    active &&
+    ("view" in patch || "siblings" in patch || "index" in patch || "folder" in patch)
+  ) {
+    active.view = state.view;
+    active.siblings = state.siblings;
+    active.index = state.index;
+    active.folder = state.folder;
+    const doc = state.siblings[state.index];
+    if (doc) active.doc = doc;
+  }
+
   for (const listener of [...listeners]) listener(state, reason);
 }
 

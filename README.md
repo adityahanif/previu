@@ -30,9 +30,14 @@ use `⋯ › Set as default viewer…` and confirm the choice in Settings.
 - Images: PNG, JPEG, JFIF, GIF, WebP, BMP, ICO, SVG, AVIF
 - PDFs rendered with pdf.js, with a thumbnail sidebar
 - Select, copy and find (`Ctrl`+`F`) text in PDFs
+- Document tabs: open several files at once, switch between them, drag to
+  reorder — each tab keeps its own zoom, page and rotation
 - Zoom, pan, fit width, fit page, actual size
-- The rest of the folder in a Files tab, with a name filter and sorting
+- The rest of the folder in a Files sidebar tab, with a name filter and sorting
 - Rotation and flips for images, saved as a copy — the original is never touched
+- Crop for images: drag a freehand frame or lock a preset aspect ratio
+  (1:1, 4:3, 16:9, …), then apply — the crop, with any rotation and flips,
+  is written to a copy that opens in its own tab
 - Presentation mode: full screen, page fitted, arrows or a clicker to advance
 - Opens the file it was launched with, and forwards paths to the running window
 
@@ -40,8 +45,11 @@ use `⋯ › Set as default viewer…` and confirm the choice in Settings.
 
 | | |
 |---|---|
-| `Ctrl`+`O` | Open a file |
+| `Ctrl`+`O` | Open a file (in a new tab) |
+| `Ctrl`+`Tab` / `Ctrl`+`Shift`+`Tab` | Next / previous tab |
+| `Ctrl`+`W` | Close the current tab |
 | `Ctrl`+`F` | Find in the PDF; `Enter` / `Shift`+`Enter` step through matches |
+| `C` | Crop the image; `Enter` applies, `Esc` cancels, arrows nudge the frame |
 | `←` / `→` | Page in a PDF, otherwise previous / next file |
 | `Ctrl`+`←` / `Ctrl`+`→` | Previous / next file |
 | `Home` / `End` | First / last page or file |

@@ -18,6 +18,7 @@ export interface ToolbarActions {
   actualSize(): void;
   rotate(delta: number): void;
   flip(axis: "horizontal" | "vertical"): void;
+  crop(): void;
   saveCopy(): void;
   findInDocument(): void;
   present(): void;
@@ -32,6 +33,7 @@ export interface ToolbarState {
   view: ViewState;
   sidebarOpen: boolean;
   canRotate: boolean;
+  cropping: boolean;
   busy: boolean;
 }
 
@@ -147,6 +149,13 @@ export function createToolbar(actions: ToolbarActions): Toolbar {
     onclick: () => actions.flip("vertical"),
   });
 
+  const crop = button({
+    icon: "crop",
+    label: "Crop the image",
+    title: "Crop the image (C)",
+    onclick: () => actions.crop(),
+  });
+
   const save = button({
     icon: "save",
     label: "Save a copy with changes applied",
@@ -189,6 +198,7 @@ export function createToolbar(actions: ToolbarActions): Toolbar {
       el("div", { class: "pill" }, [zoomOut, zoomLevel, zoomIn]),
       el("div", { class: "pill" }, [fitWidth, fitPage, actualSize]),
       el("div", { class: "pill" }, [rotateLeft, rotateRight, flipHorizontal, flipVertical]),
+      crop,
       find,
       present,
       save,
@@ -228,6 +238,9 @@ export function createToolbar(actions: ToolbarActions): Toolbar {
         control.disabled = !hasDoc || !state.canRotate;
       }
 
+      crop.disabled = !hasDoc || doc.kind !== "image";
+      crop.classList.toggle("is-active", state.cropping);
+      crop.title = state.cropping ? "Finish cropping (Enter applies, Esc cancels)" : "Crop the image (C)";
       save.disabled = !hasDoc || doc.kind !== "image";
       find.disabled = !hasDoc || doc.kind !== "pdf";
       present.disabled = !hasDoc;
