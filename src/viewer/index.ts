@@ -1,7 +1,7 @@
 import { clamp } from "../dom";
 import { MAX_ZOOM, MIN_ZOOM, type Doc, type FitMode } from "../types";
 import { createImageLayer } from "./image";
-import type { ImageInfo, Layer, PdfLayer, Size } from "./types";
+import type { Layer, PdfLayer, Size } from "./types";
 
 /**
  * Inset the stage keeps around its content, asked of the stylesheet instead of
@@ -85,11 +85,6 @@ export class Viewer {
 
   baseSize(): Size | null {
     return this.#layer?.baseSize() ?? null;
-  }
-
-  /** The on-screen image and its displayed-orientation size, for cropping. */
-  imageInfo(): ImageInfo | null {
-    return this.#layer?.imageInfo?.() ?? null;
   }
 
   /** Zoom that makes the document fill the stage in the requested direction. */
