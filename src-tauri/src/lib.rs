@@ -6,7 +6,7 @@ use std::io::BufWriter;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager};
 
 use listing::DocInfo;
@@ -136,8 +136,20 @@ fn write_image(image: &image::DynamicImage, dest: &Path) -> Result<(), String> {
     }
 }
 
-/// Writes a copy of `src` with the viewer's rotation and flips baked in. The
-/// original file is never modified.
+/// A crop rectangle in the pixels of the image *after* the flips and rotation
+/// have been applied — the orientation the user framed on screen.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CropRect {
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+}
+
+/// Writes a copy of `src` with the viewer's rotation and flips baked in, and
+/// the crop cut out of that result when one is given. The original file is
+/// never modified.
 #[tauri::command]
 fn save_copy(
     src: String,
@@ -145,6 +157,7 @@ fn save_copy(
     rotation: u16,
     flip_h: bool,
     flip_v: bool,
+    crop: Option<CropRect>,
 ) -> Result<(), String> {
     let mut image = image::open(&src).map_err(|e| format!("Cannot read {src}: {e}"))?;
 
@@ -160,6 +173,20 @@ fn save_copy(
         270 => image.rotate270(),
         _ => image,
     };
+
+    if let Some(rect) = crop {
+        use image::GenericImageView as _;
+        // Clamp rather than fail: the frontend measures against the size it
+        // decoded, which can disagree by a pixel with a re-read of the file.
+        let x = rect.x.min(image.width().saturating_sub(1));
+        let y = rect.y.min(image.height().saturating_sub(1));
+        let width = rect.width.min(image.width() - x);
+        let height = rect.height.min(image.height() - y);
+        if width == 0 || height == 0 {
+            return Err("The crop area is empty".to_string());
+        }
+        image = image.crop_imm(x, y, width, height);
+    }
 
     write_image(&image, Path::new(&dest))
 }

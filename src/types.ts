@@ -20,6 +20,37 @@ export interface Opened {
   index: number;
 }
 
+/**
+ * A crop rectangle in the pixels of the *displayed* image — that is, after the
+ * view's flips and rotation have been baked in. The save path applies the same
+ * transforms first and crops second, so these coordinates line up with what
+ * the user framed on screen.
+ */
+export interface CropRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * One open document tab. A tab is created by opening a file and is never
+ * repurposed for another file: `openedPath` is the file it was opened with,
+ * while `doc` follows navigation among that folder's siblings inside the tab.
+ * The tab carries its own folder context and view, so switching tabs restores
+ * each document the way it was left; the app state's `siblings`/`index`/
+ * `folder`/`view` are a mirror of the active tab.
+ */
+export interface TabState {
+  id: number;
+  openedPath: string;
+  doc: Doc;
+  siblings: Doc[];
+  index: number;
+  folder: string | null;
+  view: ViewState;
+}
+
 export interface ViewState {
   /** 1 renders at 100%. */
   zoom: number;

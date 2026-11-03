@@ -82,6 +82,18 @@ export async function createImageLayer(doc: Doc): Promise<Layer> {
       draw();
     },
 
+    imageInfo() {
+      return {
+        element: image,
+        frame,
+        displayed:
+          rotation % 180 !== 0
+            ? { width: natural.height, height: natural.width }
+            : { ...natural },
+        natural: { ...natural },
+      };
+    },
+
     destroy(): void {
       image.removeAttribute("src");
       frame.remove();
