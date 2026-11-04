@@ -498,7 +498,16 @@ async function saveCopy(): Promise<void> {
     return;
   }
 
-  const dest = await bridge.saveDialog(suggestedSaveName(doc));
+  // The dialog call itself can fail (a missing capability, a shell error);
+  // that must surface like any other failure instead of ending the click in
+  // silence, which is how a denied save dialog once presented.
+  let dest: string | null;
+  try {
+    dest = await bridge.saveDialog(suggestedSaveName(doc));
+  } catch (error) {
+    fail(error);
+    return;
+  }
   if (!dest) return;
 
   try {
@@ -572,7 +581,13 @@ async function applyCrop(crop: CropRect): Promise<void> {
   const doc = currentDoc();
   if (!doc || doc.kind !== "image") return;
 
-  const dest = await bridge.saveDialog(suggestedCropName(doc));
+  let dest: string | null;
+  try {
+    dest = await bridge.saveDialog(suggestedCropName(doc));
+  } catch (error) {
+    fail(error);
+    return;
+  }
   if (!dest) return;
 
   try {
