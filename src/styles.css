@@ -747,3 +747,42 @@ kbd {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* --- print -------------------------------------------------------------- */
+
+#print-root {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 0;
+  }
+
+  html,
+  body {
+    height: auto;
+    overflow: visible;
+    background: #fff;
+  }
+
+  body > :not(#print-root) {
+    display: none !important;
+  }
+
+  #print-root {
+    display: block;
+  }
+
+  #print-root img {
+    display: block;
+    width: 100%;
+    height: 100vh;
+    object-fit: contain;
+    break-after: page;
+  }
+
+  #print-root img:last-child {
+    break-after: auto;
+  }
+}

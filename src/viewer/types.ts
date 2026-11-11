@@ -37,6 +37,8 @@ export interface PdfLayer extends Layer {
   goToPage(page: number): void;
   onPageChange(listener: (page: number) => void): () => void;
   renderThumbnail(page: number, canvas: HTMLCanvasElement): Promise<void>;
+  /** Rasterizes every page for the printer, one image per page. */
+  renderForPrint(): Promise<Blob[]>;
   /** Counts `query` on every page without touching the DOM. */
   findAll(query: string): Promise<FindResult>;
   /** Scrolls to a match, highlights it, and leaves it as the current one. */

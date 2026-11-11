@@ -623,6 +623,25 @@ export async function createPdfLayer(doc: Doc, stage: HTMLElement): Promise<PdfL
       await rendered.render({ canvas, canvasContext: context, viewport }).promise;
     },
 
+    async renderForPrint(): Promise<Blob[]> {
+      // 150 dpi: sharp on paper without holding hundreds of huge bitmaps.
+      const scale = 150 / 72;
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+      const blobs: Blob[] = [];
+      if (!context) return blobs;
+      for (let number = 1; number <= pdf.numPages; number += 1) {
+        const rendered = await pdf.getPage(number);
+        const viewport = rendered.getViewport({ scale });
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        await rendered.render({ canvas, canvasContext: context, viewport }).promise;
+        const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, "image/png"));
+        if (blob) blobs.push(blob);
+      }
+      return blobs;
+    },
+
     destroy(): void {
       destroyed = true;
       generation += 1;

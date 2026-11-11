@@ -553,6 +553,46 @@ const endPan = () => {
 stage.addEventListener("pointerup", endPan);
 stage.addEventListener("pointercancel", endPan);
 
+/**
+ * The webview's own print captures the whole shell, so printing goes through a
+ * page-only container that the print stylesheet shows in place of the app.
+ */
+let printing = false;
+async function printDoc(): Promise<void> {
+  const doc = currentDoc();
+  if (!doc || printing) return;
+  printing = true;
+  const urls: string[] = [];
+  const root = document.createElement("div");
+  root.id = "print-root";
+  // The print preview may outlive window.print(), so tear down only once it closes.
+  const cleanup = () => {
+    root.remove();
+    for (const url of urls) URL.revokeObjectURL(url);
+    printing = false;
+  };
+  try {
+    if (doc.kind === "pdf") {
+      if (!viewer.pdf) return cleanup();
+      toast("Preparing to print…");
+      for (const blob of await viewer.pdf.renderForPrint()) urls.push(URL.createObjectURL(blob));
+    }
+    const images = (urls.length ? urls : [doc.url]).map((src) => {
+      const image = new Image();
+      image.src = src;
+      return image;
+    });
+    root.append(...images);
+    document.body.append(root);
+    await Promise.all(images.map((image) => image.decode().catch(() => undefined)));
+    window.addEventListener("afterprint", cleanup, { once: true });
+    window.print();
+  } catch (error) {
+    cleanup();
+    toast(`Could not print: ${String(error)}`, "error");
+  }
+}
+
 window.addEventListener("keydown", (event) => {
   const target = event.target;
   if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return;
@@ -570,6 +610,10 @@ window.addEventListener("keydown", (event) => {
       case "s":
         event.preventDefault();
         void saveCopy();
+        return;
+      case "p":
+        event.preventDefault();
+        void printDoc();
         return;
       case "f":
         event.preventDefault();
