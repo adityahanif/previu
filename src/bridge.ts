@@ -206,6 +206,12 @@ export const bridge = {
     link.click();
   },
 
+  /** Native: Windows' own print dialog, a real window rather than the in-webview preview. */
+  async print(): Promise<void> {
+    if (isNative) await invoke("print_page");
+    else window.print();
+  },
+
   async assocStatus(): Promise<AssocStatus> {
     if (!isNative) return { registered: false, defaultFor: [], supported: [] };
     return invoke<AssocStatus>("assoc_status");

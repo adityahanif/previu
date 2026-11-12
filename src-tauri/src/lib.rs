@@ -164,6 +164,39 @@ fn save_copy(
     write_image(&image, Path::new(&dest))
 }
 
+/// `window.print()` opens WebView2's preview inside the webview, where it reads
+/// as part of the app. The system dialog is a separate, modal window instead.
+#[tauri::command]
+fn print_page<R: tauri::Runtime>(webview: tauri::Webview<R>) -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        let fallback = webview.clone();
+        webview
+            .with_webview(move |platform| {
+                use webview2_com::Microsoft::Web::WebView2::Win32::{
+                    ICoreWebView2_16, COREWEBVIEW2_PRINT_DIALOG_KIND_SYSTEM,
+                };
+                use windows_core::Interface;
+                let shown = unsafe {
+                    platform
+                        .controller()
+                        .CoreWebView2()
+                        .and_then(|core| core.cast::<ICoreWebView2_16>())
+                        .and_then(|core| core.ShowPrintUI(COREWEBVIEW2_PRINT_DIALOG_KIND_SYSTEM))
+                };
+                // Runtimes older than ShowPrintUI still get the in-webview preview.
+                if shown.is_err() {
+                    let _ = fallback.print();
+                }
+            })
+            .map_err(|error| error.to_string())
+    }
+    #[cfg(not(windows))]
+    {
+        webview.print().map_err(|error| error.to_string())
+    }
+}
+
 #[tauri::command]
 fn assoc_status() -> assoc::AssocStatus {
     assoc::status()
@@ -239,6 +272,7 @@ pub fn run() {
             assoc_status,
             register_assoc,
             open_default_apps_settings,
+            print_page,
         ])
         .setup(|app| {
             if let Some(path) = first_file_arg() {

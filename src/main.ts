@@ -558,26 +558,27 @@ stage.addEventListener("pointercancel", endPan);
  * page-only container that the print stylesheet shows in place of the app.
  */
 let printing = false;
+/**
+ * The system print dialog reads the page on its own schedule and reports no
+ * close, so the previous print's pages live until the next print replaces them.
+ */
+let printUrls: string[] = [];
 async function printDoc(): Promise<void> {
   const doc = currentDoc();
   if (!doc || printing) return;
   printing = true;
-  const urls: string[] = [];
-  const root = document.createElement("div");
-  root.id = "print-root";
-  // The print preview may outlive window.print(), so tear down only once it closes.
-  const cleanup = () => {
-    root.remove();
-    for (const url of urls) URL.revokeObjectURL(url);
-    printing = false;
-  };
+  document.getElementById("print-root")?.remove();
+  for (const url of printUrls) URL.revokeObjectURL(url);
+  printUrls = [];
   try {
     if (doc.kind === "pdf") {
-      if (!viewer.pdf) return cleanup();
+      if (!viewer.pdf) return;
       toast("Preparing to print…");
-      for (const blob of await viewer.pdf.renderForPrint()) urls.push(URL.createObjectURL(blob));
+      for (const blob of await viewer.pdf.renderForPrint()) printUrls.push(URL.createObjectURL(blob));
     }
-    const images = (urls.length ? urls : [doc.url]).map((src) => {
+    const root = document.createElement("div");
+    root.id = "print-root";
+    const images = (printUrls.length ? printUrls : [doc.url]).map((src) => {
       const image = new Image();
       image.src = src;
       return image;
@@ -585,11 +586,11 @@ async function printDoc(): Promise<void> {
     root.append(...images);
     document.body.append(root);
     await Promise.all(images.map((image) => image.decode().catch(() => undefined)));
-    window.addEventListener("afterprint", cleanup, { once: true });
-    window.print();
+    await bridge.print();
   } catch (error) {
-    cleanup();
     toast(`Could not print: ${String(error)}`, "error");
+  } finally {
+    printing = false;
   }
 }
 
